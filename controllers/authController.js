@@ -51,11 +51,12 @@ const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({ success: false, message: "un authorized" });
     }
-    const match = await bcrypt.compare(pwd, user.pwd);
+    const match = await bcrypt.compare(pwd, user.password);
     if (!match) {
       return res.status(401).json({ success: false, message: "unauthorized" });
     }
-    const roles = Object.values(user.roles);
+    const roles = Object.values(user?.roles).filter(Boolean);
+    console.log(roles);
     const accessToken = jwt.sign(
       { id: user._id, roles },
       process.env.ACCESS_TOKEN_SECRET,
@@ -68,17 +69,18 @@ const login = async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "1d" }
     );
+
     // Save refresh token in the database
     user.refreshToken = refreshToken;
     await user.save();
 
     res.cookie("jwt", refreshToken, {
       httpOnly: true,
-      sameSite: "None",
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 24*60* 60 * 1000,
     });
     res.status(200).json({
       success: true,
+      roles,
       accessToken,
     });
   } catch (error) {
@@ -89,12 +91,14 @@ const login = async (req, res) => {
 
 const refreshToken = async (req, res) => {
   const cookies = req.cookies;
+  // console.log(req.cookies);
 
   if (!cookies?.jwt) {
     return res.status(401).json({ success: false, message: "Not authorized" });
   }
 
   const refreshToken = cookies.jwt;
+  //console.log(refreshToken);
 
   try {
     // Find the user with the refresh token in the database
@@ -151,7 +155,7 @@ const logout = async (req, res) => {
     // Find the user with the refresh token in the database
     const user = await userModel.findOne({ refreshToken });
     if (!user) {
-      res.clearCookie("jwt", { httpOnly: true, sameSite: "None" });
+      res.clearCookie("jwt", { httpOnly: true });
       return res.status(204).send(); // No content
     }
 
@@ -159,7 +163,7 @@ const logout = async (req, res) => {
     user.refreshToken = "";
     await user.save();
 
-    res.clearCookie("jwt", { httpOnly: true, sameSite: "None" });
+    res.clearCookie("jwt", { httpOnly: true });
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (error) {
     console.error("Error during logout:", error);

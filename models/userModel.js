@@ -6,12 +6,12 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   refreshToken: String,
   roles: {
-    user: {
+    User: {
       type: Number,
       default: 2001,
     },
-    editor: Number,
-    admin: Number,
+    Editor: Number,
+    Admin: Number,
   },
 });
 
